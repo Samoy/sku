@@ -11,7 +11,7 @@ SKU是商业运营中对商品进行管理和追踪的一种独特标识符，�
 当我们在选择商品时，通常会根据用户每一次的选择，来找出其余属性是否能被选择，如果无法被选择，则需要将其置灰，避免用户选择无效的SKU。也就是如下效果：
 ![演示示例](https://www.samoy.site/sku/sku-0.gif)
 
-## Demo地址
+## Demo效果
 [点击这里](https://www.samoy.site/sku)
 
 ## 实现思路
@@ -41,11 +41,11 @@ SKU是商业运营中对商品进行管理和追踪的一种独特标识符，�
 ## 规律
 
 首先我们观察一下：  
-1的二进制为`00000000000000000000000000000001`，  
-2的二进制为`00000000000000000000000000000010`，  
-4的二进制为`00000000000000000000000000000100`，  
-8的二进制为`00000000000000000000000000001000`  。  
-那么我们可以发现，如果一个数是2的幂次方，那么它的二进制只有一位为1，其余位均为0。而`1+2+4+8`的结果是`15`，
+`1`的二进制为`00000000000000000000000000000001`，  
+`2`的二进制为`00000000000000000000000000000010`，  
+`4`的二进制为`00000000000000000000000000000100`，  
+`8`的二进制为`00000000000000000000000000001000`  。  
+那么我们可以发现，如果一个数是`2`的幂次方，那么它的二进制只有一位为`1`，其余位均为`0`。而`1+2+4+8`的结果是`15`，
 转换为二进制为`00000000000000000000000000001111`。
 
 * 我们将`15`与`1`进行按位与运算，结果为`00000000000000000000000000000001`，十进制为`1`。
@@ -180,6 +180,7 @@ const selectedSpecs = reactive([]);
     const select = (item: string) => {
         const spec = specMap.value[item];
         const index = selectedSpecs.findIndex(o => o.name === item);
+        // 如果当前元素已经存在，则从列表中删除
         if (index > -1) {
             selectedSpecs.splice(index, 1);
             return;
@@ -192,13 +193,18 @@ const selectedSpecs = reactive([]);
 ![SKU未考虑同一维度效果](https://www.samoy.site/sku/sku-1.gif)
 
 ## 优化
-上述示例中，我们发现当选择`红色`后，`紫色`便不能再选择，这对于实际应用场景是不合理。即同一纬度情况下，应该是能够被选择的（需符合可选规格列表的某几项）。
+
+上述示例中，我们发现当选择`红色`后，`紫色`便不能再选择，这对于实际应用场景是不合理。即同一维度情况下，应该是能够被选择的（需符合可选规格列表的某几项）。
 因此我们需要对代码进行优化。还记得我们之前的`specMap`吗？我们需要对其进行改造，将其改造为以下结构：
+
 ```typescript
 type SpecMap = Record<string, { weight: number, sort: number }>
 ```
-添加了一个`sort`属性，用来表示该属性的维度。例如`红色`和`紫色`属于同一纬度，因此它们的`sort`为`0`，`套餐一`和`套餐二`属于同一维度，它们的`sort`为`1`。
+
+添加了一个`sort`属性，用来表示该属性的维度。例如`红色`和`紫色`属于同一维度，因此它们的`sort`为`0`，`套餐一`和`套餐二`
+属于同一维度，它们的`sort`为`1`。
 这次我们的`specMap`将变为：
+
 ```javascript
 const specMap = ref({
     "红色": {
@@ -243,7 +249,9 @@ const specMap = ref({
     }
 })
 ```
+
 接下来我们对`disabled`函数进行改造：
+
 ```javascript
 const disabled = computed(() => {
     return (item) => {
@@ -272,20 +280,27 @@ const disabled = computed(() => {
     };
 })
 ```
+
 然后对`select`函数进行改造：
+
 ```javascript
 const select = (item) => {
-  const spec = specMap.value[item];
-  const eleIndex = selectedSpecs.findIndex(o => o.name === item);
-  const sortIndex = selectedSpecs.findIndex(o => o.sort === spec.sort);
-  if (eleIndex > -1) {
-    selectedSpecs.splice(eleIndex, 1);
-    return;
-  }
-  if (sortIndex > -1) {
-    selectedSpecs.splice(sortIndex, 1);
-  }
-  selectedSpecs.push({ name: item, weight: spec.weight, sort: spec.sort });
+    const spec = specMap.value[item];
+    const eleIndex = selectedSpecs.findIndex(o => o.name === item);
+    const sortIndex = selectedSpecs.findIndex(o => o.sort === spec.sort);
+    // 如果当前元素已经存在，则从列表中删除
+    if (eleIndex > -1) {
+        selectedSpecs.splice(eleIndex, 1);
+        return;
+    }
+    // 如果列表中的元素存在和当前元素的维度相同，则从列表中把那个元素删除，保证同一纬度只有一个元素。
+    if (sortIndex > -1) {
+        selectedSpecs.splice(sortIndex, 1);
+    }
+    selectedSpecs.push({name: item, weight: spec.weight, sort: spec.sort});
 }
 ```
-这下我们大功告成了。
+
+这下我们就大功告成了。
+## 源码
+Demo的完整源码请访问<https://github.com/Samoy/sku/blob/main/src/App.vue>。
